@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RocketSim — Feedback Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="sim-page">
+
+  <nav>
+    <div class="nav-logo">🚀 RocketSim</div>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="builder.html">Rocket Builder</a>
+      <a href="simulator.html">Simulator</a>
+      <a href="feedback.html">Feedback</a>
+      <span id="nav-auth-area"></span>
+    </div>
+  </nav>
+
+  <div class="sim-wrapper">
+    <div class="sim-header">
+      <h1>Feedback Dashboard</h1>
+      <p class="sim-subtitle">All feedback submissions from RocketSim users.</p>
+    </div>
+
+    <div class="sim-card">
+      <div class="sim-card-header no-toggle">
+        <span>📊 Summary</span>
+        <button class="fetch-btn" onclick="loadDashboard()">🔄 Refresh</button>
+      </div>
+      <div class="sim-card-body">
+        <div class="results-grid">
+          <div class="result-item"><div class="result-value" id="dash-total">—</div><div class="result-label">Total Responses</div></div>
+          <div class="result-item"><div class="result-value" id="dash-avg-rating">—</div><div class="result-label">Average Rating</div></div>
+          <div class="result-item"><div class="result-value" id="dash-recommend">—</div><div class="result-label">Would Recommend</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sim-card">
+      <div class="sim-card-header no-toggle"><span>📝 All Responses</span></div>
+      <div class="sim-card-body">
+        <div id="dash-responses"><p style="color:var(--muted);font-size:13px;">Click Refresh to load responses.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="footer-content">
+      <div class="footer-logo">🚀 RocketSim</div>
+      <p>Built by Aarush · Doha College · Qatar</p>
+    </div>
+  </footer>
+
+  <script type="module">
+    import { initAuthNav } from './auth.js';
+    initAuthNav();
+  </script>
+  <script src="script.js"></script>
+</body>
+</html>

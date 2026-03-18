@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RocketSim — Simulator</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="sim-page">
+
+  <nav>
+    <div class="nav-logo">🚀 RocketSim</div>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="builder.html">Rocket Builder</a>
+      <a href="simulator.html" class="active">Simulator</a>
+      <a href="feedback.html">Feedback</a>
+      <span id="nav-auth-area"></span>
+    </div>
+  </nav>
+
+  <!-- AI Panel -->
+  <div class="ai-overlay" id="aiOverlay" onclick="closeAI()"></div>
+  <div class="ai-panel" id="aiPanel">
+    <div class="ai-panel-header">
+      <span>🤖 AI Flight Analyst</span>
+      <button class="ai-close" onclick="closeAI()">✕</button>
+    </div>
+    <div class="ai-panel-body">
+      <div class="ai-summary" id="aiSummary"></div>
+      <div class="ai-chat" id="aiChat"></div>
+      <div class="ai-input-row">
+        <input type="text" id="aiInput" placeholder="Ask about your flight data..." onkeydown="if(event.key==='Enter') sendAI()">
+        <button onclick="sendAI()">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SIMULATOR CONTENT ══ -->
+  <div id="sim-content">
+    <div class="sim-wrapper">
+      <div class="sim-header">
+        <h1>Flight Simulator</h1>
+        <p class="sim-subtitle">Enter your rocket parameters and run the simulation to predict your flight.</p>
+        <div id="prefill-notice" style="display:none;" class="prefill-banner">✅ Dimensions loaded from Rocket Builder — review and run simulation below.</div>
+        <div class="unit-toggle">
+          <button id="btn-metric" class="unit-btn active" onclick="setUnits('metric')">Metric</button>
+          <button id="btn-imperial" class="unit-btn" onclick="setUnits('imperial')">Imperial</button>
+        </div>
+      </div>
+
+      <!-- Simulation Factors -->
+      <div class="sim-card">
+        <div class="sim-card-header" onclick="toggleSection('factors-body')">
+          <span>⚙️ Simulation Factors</span>
+          <span class="toggle-arrow" id="arrow-factors-body">▼</span>
+        </div>
+        <div class="sim-card-body collapsed" id="factors-body">
+          <p class="factors-desc">Choose which physical factors to include. More factors = more realistic results.</p>
+          <div class="factors-grid">
+            <label class="factor-toggle"><input type="checkbox" id="factor-drag" checked><span class="factor-box"><span class="factor-name">💨 Aerodynamic Drag</span><span class="factor-hint">Air resistance acting against the rocket</span></span></label>
+            <label class="factor-toggle"><input type="checkbox" id="factor-wind" checked><span class="factor-box"><span class="factor-name">🌬️ Wind Effect</span><span class="factor-hint">Horizontal wind pushing the rocket</span></span></label>
+            <label class="factor-toggle"><input type="checkbox" id="factor-humidity" checked><span class="factor-box"><span class="factor-name">💧 Humidity Correction</span><span class="factor-hint">Humidity's effect on air density</span></span></label>
+            <label class="factor-toggle"><input type="checkbox" id="factor-altitude" checked><span class="factor-box"><span class="factor-name">🏔️ Launch Altitude</span><span class="factor-hint">Thinner air at higher launch sites</span></span></label>
+            <label class="factor-toggle"><input type="checkbox" id="factor-stability" checked><span class="factor-box"><span class="factor-name">⚖️ Stability Check</span><span class="factor-hint">Barrowman CP/CG analysis</span></span></label>
+            <label class="factor-toggle"><input type="checkbox" id="factor-weather" checked><span class="factor-box"><span class="factor-name">🌡️ Temperature & Pressure</span><span class="factor-hint">Weather-adjusted air density</span></span></label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Rocket Parameters -->
+      <div class="sim-card">
+        <div class="sim-card-header" onclick="toggleSection('rocket-body')">
+          <span>🚀 Rocket Parameters</span>
+          <span class="toggle-arrow" id="arrow-rocket-body">▼</span>
+        </div>
+        <div class="sim-card-body" id="rocket-body">
+          <div class="controls">
+            <div class="input-group"><label id="label-mass">Rocket Mass (g)</label><input type="number" id="mass" value="150" min="1"><span class="hint">Total mass including motor</span></div>
+            <div class="input-group"><label id="label-diameter">Body Diameter (mm)</label><input type="number" id="diameter" value="29" min="5"><span class="hint">Outer diameter of body tube</span></div>
+            <div class="input-group"><label>Drag Coefficient (Cd)</label><input type="number" id="cd" value="0.75" min="0.1" step="0.05"><span class="hint">Typical rockets: 0.5 – 0.9</span></div>
+            <div class="input-group"><label>Launch Angle (°)</label><input type="number" id="angle" value="90" min="10" max="90"><span class="hint">90° = straight up</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Motor Parameters -->
+      <div class="sim-card">
+        <div class="sim-card-header" onclick="toggleSection('motor-body')">
+          <span>🔥 Motor Parameters</span>
+          <span class="toggle-arrow" id="arrow-motor-body">▼</span>
+        </div>
+        <div class="sim-card-body" id="motor-body">
+          <div class="controls">
+            <div class="input-group"><label id="label-impulse">Total Impulse (Ns)</label><input type="number" id="impulse" value="10" min="0.1" step="0.1"><span class="hint">Found on motor casing label</span></div>
+            <div class="input-group"><label id="label-burntime">Burn Time (s)</label><input type="number" id="burntime" value="1.5" min="0.1" step="0.1"><span class="hint">How long the motor fires</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stability Parameters -->
+      <div class="sim-card">
+        <div class="sim-card-header" onclick="toggleSection('stability-body')">
+          <span>⚖️ Stability Parameters</span>
+          <span class="toggle-arrow" id="arrow-stability-body">▼</span>
+        </div>
+        <div class="sim-card-body" id="stability-body">
+          <div class="controls">
+            <div class="input-group"><label id="label-noselen">Nose Cone Length (mm)</label><input type="number" id="noselen" value="100" min="10"><span class="hint">Length of nose cone only</span></div>
+            <div class="input-group"><label id="label-bodylen">Body Tube Length (mm)</label><input type="number" id="bodylen" value="300" min="50"><span class="hint">Length of main body tube</span></div>
+            <div class="input-group"><label id="label-finspan">Fin Span (mm)</label><input type="number" id="finspan" value="60" min="5"><span class="hint">Tip to root measured outward</span></div>
+            <div class="input-group"><label id="label-finroot">Fin Root Chord (mm)</label><input type="number" id="finroot" value="50" min="5"><span class="hint">Length where fin meets body</span></div>
+            <div class="input-group"><label id="label-fintip">Fin Tip Chord (mm)</label><input type="number" id="fintip" value="25" min="0"><span class="hint">0 = delta fin</span></div>
+            <div class="input-group"><label>Number of Fins</label><input type="number" id="nfins" value="3" min="3" max="8"><span class="hint">Typically 3 or 4</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Parachute Recovery -->
+      <div class="sim-card">
+        <div class="sim-card-header" onclick="toggleSection('chute-body')">
+          <span>🪂 Recovery System</span>
+          <span class="toggle-arrow" id="arrow-chute-body">▼</span>
+        </div>
+        <div class="sim-card-body collapsed" id="chute-body">
+          <div style="margin-bottom:16px;">
+            <label class="factor-toggle" style="gap:12px;">
+              <input type="checkbox" id="use-parachute" onchange="toggleParachuteInputs()" style="accent-color:#ff4d1c;width:16px;height:16px;">
+              <span class="factor-box">
+                <span class="factor-name">🪂 Include Parachute Recovery</span>
+                <span class="factor-hint">Simulates parachute deployment at apogee and realistic descent</span>
+              </span>
+            </label>
+          </div>
+          <div id="parachute-inputs" style="display:none;">
+            <div class="controls">
+              <div class="input-group">
+                <label>Parachute Diameter (cm)</label>
+                <input type="number" id="chute-diameter" value="30" min="5" step="1">
+                <span class="hint">Auto-calculated from rocket mass — override if needed</span>
+              </div>
+              <div class="input-group">
+                <label>Chute Drag Coefficient</label>
+                <input type="number" id="chute-cd" value="0.75" min="0.1" step="0.05">
+                <span class="hint">Typical round chute: 0.75 – 1.5</span>
+              </div>
+              <div class="input-group">
+                <label>Chute Colour</label>
+                <select id="chute-colour">
+                  <option value="red" selected>Red</option>
+                  <option value="orange">Orange</option>
+                  <option value="yellow">Yellow</option>
+                  <option value="green">Green</option>
+                  <option value="blue">Blue</option>
+                  <option value="white">White</option>
+                  <option value="pink">Pink</option>
+                </select>
+                <span class="hint">Canopy colour in visualiser</span>
+              </div>
+            </div>
+            <div style="margin-top:12px;padding:12px 16px;background:rgba(63,185,80,0.08);border:1px solid rgba(63,185,80,0.25);border-radius:8px;font-size:12px;color:#3fb950;" id="chute-recommendation">
+              Enable the parachute to see recommended size.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Nose Shape (hidden, read by visualiser) -->
+      <div class="sim-card">
+        <div class="sim-card-header" onclick="toggleSection('design-body')">
+          <span>🎨 Visual Design</span>
+          <span class="toggle-arrow" id="arrow-design-body">▼</span>
+        </div>
+        <div class="sim-card-body collapsed" id="design-body">
+          <div class="controls">
+            <div class="input-group">
+              <label>Nose Cone Shape</label>
+              <select id="noseShape">
+                <option value="ogive" selected>Ogive</option>
+                <option value="conical">Conical</option>
+                <option value="parabolic">Parabolic</option>
+              </select>
+              <span class="hint">Affects visualiser appearance</span>
+            </div>
+            <div class="input-group">
+              <label>Body Colour</label>
+              <select id="bodyColour">
+                <option value="orange" selected>Orange / Red</option>
+                <option value="white">White</option>
+                <option value="black">Black</option>
+                <option value="blue">Blue</option>
+                <option value="silver">Silver</option>
+              </select>
+              <span class="hint">Rocket colour in visualiser</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Weather -->
+      <div class="sim-card">
+        <div class="sim-card-header" onclick="toggleSection('weather-body')">
+          <span>🌤️ Weather Conditions</span>
+          <span class="toggle-arrow" id="arrow-weather-body">▼</span>
+        </div>
+        <div class="sim-card-body" id="weather-body">
+          <div class="weather-fetch-bar">
+            <button class="fetch-btn" onclick="fetchWeather()">📍 Auto-fetch My Weather</button>
+            <span class="weather-status" id="weather-status">Not fetched yet</span>
+          </div>
+          <div class="controls">
+            <div class="input-group"><label>Temperature (°C)</label><input type="number" id="temperature" value="25" step="0.5"><span class="hint">Affects air density</span></div>
+            <div class="input-group"><label>Humidity (%)</label><input type="number" id="humidity" value="50" min="0" max="100"><span class="hint">Affects air density slightly</span></div>
+            <div class="input-group"><label>Pressure (hPa)</label><input type="number" id="pressure" value="1013" min="800" max="1100"><span class="hint">Sea level = 1013 hPa</span></div>
+            <div class="input-group"><label>Wind Speed (m/s)</label><input type="number" id="windspeed" value="0" min="0" step="0.5"><span class="hint">Average at launch site</span></div>
+            <div class="input-group"><label>Wind Direction</label><select id="winddir"><option value="headwind">Headwind</option><option value="tailwind">Tailwind</option><option value="crosswind">Crosswind</option></select><span class="hint">Relative to launch direction</span></div>
+            <div class="input-group"><label>Launch Altitude (m asl)</label><input type="number" id="launchalt" value="0" min="0"><span class="hint">Height above sea level</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Save design bar -->
+      <div class="save-design-bar" id="save-design-bar" style="display:none;">
+        <input type="text" id="design-name" placeholder="Name this rocket design (e.g. Estes Alpha III)">
+        <button class="fetch-btn" onclick="saveDesign()">💾 Save Design</button>
+        <span id="save-design-status"></span>
+      </div>
+
+      <button class="sim-btn" onclick="simulate()">🚀 Run Simulation</button>
+      <button id="watch-launch-btn" class="watch-btn" style="display:none;" onclick="openVisualiser()">🎬 Watch Launch Visualisation →</button>
+
+      <!-- Results -->
+      <div id="results-card" style="display:none;">
+        <div class="sim-card results-section">
+          <div class="sim-card-header no-toggle">
+            <span>📊 Flight Results</span>
+            <button class="ai-trigger-btn" onclick="openAI()">🤖 Analyse with AI</button>
+          </div>
+          <div class="sim-card-body">
+            <div class="results-grid" id="results"></div>
+          </div>
+        </div>
+        <div class="sim-card" id="stability-results-card">
+          <div class="sim-card-header no-toggle"><span>⚖️ Stability Analysis</span></div>
+          <div class="sim-card-body"><div id="stability-result"></div></div>
+        </div>
+        <div class="sim-card">
+          <div class="sim-card-header no-toggle"><span>📈 Flight Data Graphs</span></div>
+          <div class="sim-card-body">
+            <div class="graph-container">
+              <div class="graph-wrap"><h3>Altitude <span id="alt-unit-label">(m)</span></h3><canvas id="canvas-alt" width="700" height="220"></canvas></div>
+              <div class="graph-wrap"><h3>Velocity <span id="vel-unit-label">(m/s)</span></h3><canvas id="canvas-vel" width="700" height="220"></canvas></div>
+              <div class="graph-wrap"><h3>Thrust (N)</h3><canvas id="canvas-thrust" width="700" height="220"></canvas></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══ INLINE VISUALISER ══ -->
+  <div id="viz-overlay" style="display:none; position:fixed; inset:0; background:#06060e; z-index:1000; flex-direction:column; font-family:Arial,sans-serif;">
+
+    <!-- Top bar -->
+    <div style="flex:0 0 auto; display:flex; justify-content:space-between; align-items:center; padding:10px 24px; background:rgba(6,6,14,0.97); border-bottom:1px solid #2a2a3a; gap:12px;">
+      <button onclick="closeVisualiser()" style="padding:6px 16px; border-radius:6px; border:1px solid #2a2a3a; background:#0d0d18; color:#6e6e8a; font-size:13px; cursor:pointer;">← Back to Simulator</button>
+      <div style="font-size:15px; font-weight:bold; color:#ff4d1c;">🚀 RocketSim — Launch Visualiser</div>
+      <div class="viz-phase-badge phase-ready" id="viz-phase">Ready</div>
+    </div>
+
+    <!-- HUD -->
+    <div style="flex:0 0 auto; display:flex; justify-content:center; gap:28px; padding:7px 24px; background:rgba(8,8,18,0.95); border-bottom:1px solid #1a1a2a; flex-wrap:wrap;">
+      <div style="text-align:center;"><div style="font-size:18px;font-weight:bold;color:#ff4d1c;font-variant-numeric:tabular-nums;" id="viz-alt">0.0</div><div style="font-size:10px;color:#6e6e8a;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">Altitude (m)</div></div>
+      <div style="text-align:center;"><div style="font-size:18px;font-weight:bold;color:#4d9fff;font-variant-numeric:tabular-nums;" id="viz-vel">0.0</div><div style="font-size:10px;color:#6e6e8a;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">Velocity (m/s)</div></div>
+      <div style="text-align:center;"><div style="font-size:18px;font-weight:bold;color:#ffcc00;font-variant-numeric:tabular-nums;" id="viz-thrust">0.0</div><div style="font-size:10px;color:#6e6e8a;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">Thrust (N)</div></div>
+      <div style="text-align:center;"><div style="font-size:18px;font-weight:bold;color:#c080ff;font-variant-numeric:tabular-nums;" id="viz-time">0.00</div><div style="font-size:10px;color:#6e6e8a;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">Time (s)</div></div>
+      <div style="text-align:center;"><div style="font-size:18px;font-weight:bold;color:#3fb950;font-variant-numeric:tabular-nums;" id="viz-maxalt">—</div><div style="font-size:10px;color:#6e6e8a;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">Max Alt (m)</div></div>
+      <div style="text-align:center;"><div style="font-size:18px;font-weight:bold;color:#ff4d1c;font-variant-numeric:tabular-nums;" id="viz-accel">0.0</div><div style="font-size:10px;color:#6e6e8a;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">Accel (m/s²)</div></div>
+    </div>
+
+    <!-- Canvas wrap -->
+    <div id="viz-canvas-wrap" style="flex:1 1 0; position:relative; overflow:hidden; min-height:0;">
+      <canvas id="viz-canvas" style="position:absolute;top:0;left:0;"></canvas>
+
+      <!-- Countdown -->
+      <div id="viz-countdown" style="position:absolute;inset:0;background:rgba(0,0,0,0.93);z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;backdrop-filter:blur(8px);transition:opacity 0.5s;">
+        <div style="font-size:13px;color:#6e6e8a;letter-spacing:1px;text-align:center;" id="viz-cd-motor">Loading...</div>
+        <div style="font-size:110px;font-weight:bold;color:#ff4d1c;line-height:1;text-shadow:0 0 60px rgba(255,77,28,0.6);transition:transform 0.12s;" id="viz-cd-num">5</div>
+        <div style="font-size:15px;color:#6e6e8a;letter-spacing:6px;text-transform:uppercase;" id="viz-cd-label">T-MINUS</div>
+        <div style="width:260px;height:3px;background:#1a1a2a;border-radius:2px;overflow:hidden;"><div id="viz-cd-fill" style="height:100%;background:#ff4d1c;border-radius:2px;transition:width 0.85s linear;width:100%;"></div></div>
+        <div style="font-size:12px;color:#3a3a52;">Stand clear of launch area</div>
+      </div>
+
+      <!-- Event tags -->
+      <div style="position:absolute;top:14px;right:14px;display:flex;flex-direction:column;gap:6px;z-index:5;pointer-events:none;">
+        <div class="viz-etag viz-etag-burnout" id="viz-tag-burnout">🔥 Motor Burnout</div>
+        <div class="viz-etag viz-etag-apogee"  id="viz-tag-apogee">⬆️ Apogee Reached</div>
+        <div class="viz-etag viz-etag-landed"  id="viz-tag-landed">✅ Landed</div>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div style="flex:0 0 auto;display:flex;justify-content:center;align-items:center;gap:12px;padding:10px 24px;background:rgba(6,6,14,0.97);border-top:1px solid #2a2a3a;flex-wrap:wrap;">
+      <button class="viz-ctrl primary" id="viz-play-btn" onclick="vizTogglePlay()">▶ Play</button>
+      <button class="viz-ctrl" onclick="vizRestart()">↺ Restart</button>
+      <label style="color:#6e6e8a;font-size:12px;display:flex;align-items:center;gap:6px;">Speed
+        <select class="viz-speed-select" onchange="vizSpeed=parseFloat(this.value)">
+          <option value="0.25">0.25×</option>
+          <option value="0.5">0.5×</option>
+          <option value="1" selected>1×</option>
+          <option value="2">2×</option>
+          <option value="5">5×</option>
+          <option value="10">10×</option>
+        </select>
+      </label>
+      <button class="viz-ctrl" onclick="vizShowSummary()">📊 Summary</button>
+    </div>
+
+    <!-- Summary -->
+    <div id="viz-summary" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,0.85);z-index:60;align-items:center;justify-content:center;backdrop-filter:blur(5px);">
+      <div style="background:#0d0d18;border:1px solid #2a2a3a;border-radius:14px;padding:36px;text-align:center;max-width:440px;width:90%;">
+        <h2 style="font-size:24px;color:#3fb950;margin-bottom:6px;">🚀 Flight Complete</h2>
+        <p style="color:#6e6e8a;font-size:13px;margin-bottom:20px;">Your rocket has landed</p>
+        <div id="viz-summary-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:22px;"></div>
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+          <button class="viz-ctrl" onclick="document.getElementById('viz-summary').style.display='none'">Close</button>
+          <button class="viz-ctrl primary" onclick="vizRestart();document.getElementById('viz-summary').style.display='none'">↺ Replay</button>
+          <button class="viz-ctrl" onclick="closeVisualiser()">← Simulator</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <footer id="sim-footer">
+    <div class="footer-content">
+      <div class="footer-logo">🚀 RocketSim</div>
+      <p>Built by Aarush · Doha College · Qatar</p>
+      <p class="footer-note">For educational and pre-flight planning purposes. Always follow local rocketry safety regulations.</p>
+    </div>
+  </footer>
+
+  <script type="module">
+    import { initAuthNav, getCurrentUser } from './auth.js';
+    initAuthNav();
+    window.getCurrentUser = getCurrentUser;
+  </script>
+  <script src="script.js"></script>
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      const params = new URLSearchParams(window.location.search);
+      const fields = ['mass','diameter','noselen','bodylen','finspan','finroot','fintip','nfins','cd','angle','impulse','burntime'];
+      let anyFilled = false;
+      fields.forEach(f => {
+        if (params.has(f)) {
+          const el = document.getElementById(f);
+          if (el) { el.value = params.get(f); anyFilled = true; }
+        }
+      });
+      if (anyFilled) {
+        document.getElementById('prefill-notice').style.display = 'block';
+        ['rocket-body','stability-body','motor-body'].forEach(id => {
+          const el    = document.getElementById(id);
+          const arrow = document.getElementById('arrow-' + id);
+          if (el) el.classList.remove('collapsed');
+          if (arrow) arrow.classList.remove('collapsed');
+        });
+      }
+    });
+  </script>
+</body>
+</html>

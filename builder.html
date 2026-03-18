@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RocketSim — Rocket Builder</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="sim-page">
+
+  <nav>
+    <div class="nav-logo">🚀 RocketSim</div>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="builder.html" class="active">Rocket Builder</a>
+      <a href="simulator.html">Simulator</a>
+      <a href="feedback.html">Feedback</a>
+      <span id="nav-auth-area"></span>
+    </div>
+  </nav>
+
+  <div class="builder-wrapper">
+    <div class="builder-header">
+      <h1>Rocket Builder</h1>
+      <p class="sim-subtitle">Design your rocket visually then send dimensions directly to the simulator.</p>
+    </div>
+
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchTab('sketch')">✏️ Sketch Builder</button>
+      <button class="tab-btn" onclick="switchTab('stl')">📦 STL Upload</button>
+    </div>
+
+    <div class="tab-content active" id="tab-sketch">
+      <div class="builder-layout">
+        <div class="sliders-panel">
+          <div class="slider-section-title">Nose Cone</div>
+          <div class="slider-group">
+            <div class="slider-row"><span class="slider-label">Shape</span></div>
+            <select class="nose-select" id="noseShape" onchange="drawRocket()">
+              <option value="conical">Conical</option>
+              <option value="ogive" selected>Ogive</option>
+              <option value="parabolic">Parabolic</option>
+            </select>
+          </div>
+          <div class="slider-group">
+            <div class="slider-row"><span class="slider-label">Nose Length</span><span class="slider-value" id="val-noselen">100 mm</span></div>
+            <input type="range" id="sl-noselen" min="40" max="300" value="100" oninput="updateSlider('noselen')">
+          </div>
+          <div class="slider-section-title">Body Tube</div>
+          <div class="slider-group">
+            <div class="slider-row"><span class="slider-label">Body Length</span><span class="slider-value" id="val-bodylen">300 mm</span></div>
+            <input type="range" id="sl-bodylen" min="100" max="1000" value="300" oninput="updateSlider('bodylen')">
+          </div>
+          <div class="slider-group">
+            <div class="slider-row"><span class="slider-label">Diameter</span><span class="slider-value" id="val-diameter">29 mm</span></div>
+            <input type="range" id="sl-diameter" min="10" max="160" value="29" oninput="updateSlider('diameter')">
+          </div>
+          <div class="slider-section-title">Fins</div>
+          <div class="slider-group">
+            <div class="slider-row"><span class="slider-label">Number of Fins</span><span class="slider-value" id="val-nfins">3</span></div>
+            <input type="range" id="sl-nfins" min="3" max="6" value="3" step="1" oninput="updateSlider('nfins')">
+          </div>
+          <div class="slider-group">
+            <div class="slider-row"><span class="slider-label">Fin Span</span><span class="slider-value" id="val-finspan">60 mm</span></div>
+            <input type="range" id="sl-finspan" min="10" max="200" value="60" oninput="updateSlider('finspan')">
+          </div>
+          <div class="slider-group">
+            <div class="slider-row"><span class="slider-label">Root Chord</span><span class="slider-value" id="val-finroot">50 mm</span></div>
+            <input type="range" id="sl-finroot" min="10" max="200" value="50" oninput="updateSlider('finroot')">
+          </div>
+          <div class="slider-group">
+            <div class="slider-row"><span class="slider-label">Tip Chord</span><span class="slider-value" id="val-fintip">25 mm</span></div>
+            <input type="range" id="sl-fintip" min="0" max="150" value="25" oninput="updateSlider('fintip')">
+          </div>
+          <div class="slider-section-title">Mass & Drag</div>
+          <div class="slider-group">
+            <div class="slider-row"><span class="slider-label">Rocket Mass</span><span class="slider-value" id="val-mass">150 g</span></div>
+            <input type="range" id="sl-mass" min="20" max="2000" value="150" oninput="updateSlider('mass')">
+          </div>
+          <div class="slider-group">
+            <div class="slider-row"><span class="slider-label">Drag Coefficient</span><span class="slider-value" id="val-cd">0.75</span></div>
+            <input type="range" id="sl-cd" min="0.3" max="1.2" value="0.75" step="0.05" oninput="updateSlider('cd')">
+          </div>
+        </div>
+
+        <div class="preview-panel">
+          <h3>Live Preview</h3>
+          <svg id="rocketSVG" viewBox="0 0 300 500" xmlns="http://www.w3.org/2000/svg"></svg>
+          <div class="preview-stats">
+            <div class="preview-stat"><div class="preview-stat-value" id="stat-length">400 mm</div><div class="preview-stat-label">Total Length</div></div>
+            <div class="preview-stat"><div class="preview-stat-value" id="stat-diameter">29 mm</div><div class="preview-stat-label">Diameter</div></div>
+            <div class="preview-stat"><div class="preview-stat-value" id="stat-finspan">60 mm</div><div class="preview-stat-label">Fin Span</div></div>
+          </div>
+          <button class="send-btn" onclick="sendToSimulator()">🚀 Send to Simulator →</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-content" id="tab-stl">
+      <div class="stl-layout">
+        <div class="stl-upload-panel">
+          <h3>Upload STL File</h3>
+          <div class="upload-zone" id="uploadZone"
+               onclick="document.getElementById('stlFileInput').click()"
+               ondragover="handleDragOver(event)"
+               ondragleave="handleDragLeave(event)"
+               ondrop="handleDrop(event)">
+            <div class="upload-icon">📦</div>
+            <p>Click to upload or drag and drop</p>
+            <p class="upload-hint">Supports .stl files (ASCII or binary)</p>
+          </div>
+          <input type="file" id="stlFileInput" accept=".stl" onchange="handleSTLUpload(event)">
+          <p class="stl-status" id="stlStatus">No file loaded yet.</p>
+          <div class="stl-dims" id="stlDims" style="display:none;">
+            <div class="stl-dim-item"><div class="stl-dim-value" id="stl-length">—</div><div class="stl-dim-label">Length (mm)</div></div>
+            <div class="stl-dim-item"><div class="stl-dim-value" id="stl-width">—</div><div class="stl-dim-label">Width (mm)</div></div>
+            <div class="stl-dim-item"><div class="stl-dim-value" id="stl-height">—</div><div class="stl-dim-label">Height (mm)</div></div>
+            <div class="stl-dim-item"><div class="stl-dim-value" id="stl-triangles">—</div><div class="stl-dim-label">Triangles</div></div>
+          </div>
+          <button class="stl-send-btn" id="stlSendBtn" onclick="sendSTLToSimulator()">🚀 Send Dimensions to Simulator →</button>
+        </div>
+        <div class="stl-viewer-panel">
+          <h3>3D Preview</h3>
+          <canvas id="stlCanvas"></canvas>
+          <p style="font-size:11px;color:#2a2a42;text-align:center;margin-top:8px;">Click and drag to rotate · Scroll to zoom</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="footer-content">
+      <div class="footer-logo">🚀 RocketSim</div>
+      <p>Built by Aarush · Doha College · Qatar</p>
+      <p class="footer-note">For educational and pre-flight planning purposes.</p>
+    </div>
+  </footer>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script type="module">
+    import { initAuthNav } from './auth.js';
+    initAuthNav();
+  </script>
+  <script src="builder.js"></script>
+</body>
+</html>

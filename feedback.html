@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RocketSim — Feedback</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="sim-page">
+
+  <nav>
+    <div class="nav-logo">🚀 RocketSim</div>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="builder.html">Rocket Builder</a>
+      <a href="simulator.html">Simulator</a>
+      <a href="feedback.html" class="active">Feedback</a>
+      <span id="nav-auth-area"></span>
+    </div>
+  </nav>
+
+  <div class="sim-wrapper" style="max-width:580px;">
+    <div class="sim-header">
+      <h1>Leave Feedback</h1>
+      <p class="sim-subtitle">Help improve RocketSim by sharing your experience. All feedback is reviewed by the developer.</p>
+    </div>
+
+    <div class="sim-card">
+      <div class="sim-card-header no-toggle"><span>📝 Your Feedback</span></div>
+      <div class="sim-card-body">
+        <div class="input-group" style="margin-bottom:18px;">
+          <label>Your Name (optional)</label>
+          <input type="text" id="fb-name" placeholder="Anonymous">
+          <span class="hint">Leave blank to stay anonymous</span>
+        </div>
+        <div class="input-group" style="margin-bottom:18px;">
+          <label>Overall Rating</label>
+          <div class="star-rating">
+            <span class="star-btn" onclick="setRating(1)">★</span>
+            <span class="star-btn" onclick="setRating(2)">★</span>
+            <span class="star-btn" onclick="setRating(3)">★</span>
+            <span class="star-btn" onclick="setRating(4)">★</span>
+            <span class="star-btn" onclick="setRating(5)">★</span>
+          </div>
+          <span class="hint" id="rating-label">Click a star to rate</span>
+        </div>
+        <div class="input-group" style="margin-bottom:18px;">
+          <label>What did you use RocketSim for?</label>
+          <select id="fb-usedfor">
+            <option value="">Select an option</option>
+            <option value="Pre-flight planning">Pre-flight planning for a real rocket</option>
+            <option value="School project">School or university project</option>
+            <option value="Learning physics">Learning about physics / engineering</option>
+            <option value="Curiosity">Just exploring out of curiosity</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="input-group" style="margin-bottom:18px;">
+          <label>Comments or Suggestions</label>
+          <textarea id="fb-comments" rows="5" placeholder="What worked well? What could be improved? Any features you'd like to see?"></textarea>
+        </div>
+        <div class="input-group" style="margin-bottom:22px;">
+          <label>Would you recommend RocketSim?</label>
+          <div class="radio-group">
+            <label class="radio-label"><input type="radio" name="recommend" value="Yes"> Yes</label>
+            <label class="radio-label"><input type="radio" name="recommend" value="Maybe"> Maybe</label>
+            <label class="radio-label"><input type="radio" name="recommend" value="No"> No</label>
+          </div>
+        </div>
+        <button class="sim-btn" onclick="submitFeedback()">Submit Feedback</button>
+        <div id="fb-status" style="margin-top:14px;font-size:13px;text-align:center;min-height:20px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="footer-content">
+      <div class="footer-logo">🚀 RocketSim</div>
+      <p>Built by Aarush · Doha College · Qatar</p>
+      <p class="footer-note">For educational and pre-flight planning purposes.</p>
+    </div>
+  </footer>
+
+  <script type="module">
+    import { initAuthNav } from './auth.js';
+    initAuthNav();
+  </script>
+  <script src="script.js"></script>
+</body>
+</html>

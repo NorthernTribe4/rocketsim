@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RocketSim — Launch Visualiser</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    :root {
+      --bg:#08080f; --accent:#ff4d1c; --accent2:#ff7043;
+      --blue:#4d9fff; --green:#3fb950; --purple:#c080ff;
+      --yellow:#ffcc00; --text:#e8e8f0; --muted:#6e6e8a;
+    }
+    html, body { height:100%; overflow:hidden; }
+    body {
+      background:var(--bg); color:var(--text);
+      font-family:Arial,sans-serif;
+      display:flex; flex-direction:column;
+    }
+
+    /* ── Nav ── */
+    nav {
+      flex:0 0 auto;
+      display:flex; justify-content:space-between; align-items:center;
+      padding:10px 28px;
+      background:rgba(8,8,15,0.98);
+      border-bottom:1px solid #2a2a3a;
+      z-index:10;
+    }
+    .nav-logo { font-size:17px; font-weight:bold; color:var(--accent); }
+    .nav-back  { color:var(--muted); text-decoration:none; font-size:13px; transition:color 0.2s; }
+    .nav-back:hover { color:var(--text); }
+
+    /* ── Data bar ── */
+    .data-bar {
+      flex:0 0 auto;
+      display:flex; justify-content:center; gap:28px;
+      padding:7px 28px;
+      background:#0a0a16;
+      border-bottom:1px solid #2a2a3a;
+      flex-wrap:wrap;
+    }
+    .data-item { text-align:center; }
+    .data-value {
+      font-size:18px; font-weight:bold; color:var(--accent);
+      line-height:1; font-variant-numeric:tabular-nums;
+    }
+    .data-label { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; margin-top:2px; }
+    .data-item.blue   .data-value { color:var(--blue); }
+    .data-item.green  .data-value { color:var(--green); }
+    .data-item.purple .data-value { color:var(--purple); }
+    .data-item.yellow .data-value { color:var(--yellow); }
+
+    /* ── Canvas area ── */
+    .viz-area {
+      flex:1 1 0;
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:2px;
+      background:#111;
+      min-height:0;
+    }
+    .viz-panel {
+      position:relative;
+      overflow:hidden;
+      background:var(--bg);
+    }
+    .panel-label {
+      position:absolute; top:10px; left:14px;
+      font-size:10px; color:var(--muted);
+      text-transform:uppercase; letter-spacing:1px;
+      z-index:5; background:rgba(8,8,15,0.8);
+      padding:3px 9px; border-radius:4px;
+      pointer-events:none;
+    }
+    .viz-panel canvas {
+      position:absolute; top:0; left:0;
+      display:block;
+    }
+
+    /* ── Controls ── */
+    .controls-bar {
+      flex:0 0 auto;
+      display:flex; justify-content:center; align-items:center;
+      gap:12px; padding:10px 28px;
+      background:rgba(8,8,15,0.98);
+      border-top:1px solid #2a2a3a;
+      flex-wrap:wrap;
+    }
+    .ctrl-btn {
+      padding:7px 18px; border-radius:6px;
+      border:1px solid #2a2a3a; background:#0d0d18;
+      color:var(--text); font-size:13px; cursor:pointer;
+      transition:all 0.2s; text-decoration:none;
+      display:inline-flex; align-items:center;
+    }
+    .ctrl-btn:hover { border-color:var(--accent); }
+    .ctrl-btn.primary { background:var(--accent); border-color:var(--accent); color:white; font-weight:bold; }
+    .ctrl-btn.primary:hover { background:var(--accent2); }
+    .speed-select {
+      padding:6px 10px; border-radius:6px;
+      border:1px solid #2a2a3a; background:#0d0d18;
+      color:var(--text); font-size:13px; cursor:pointer;
+    }
+    .phase-badge {
+      padding:5px 14px; border-radius:20px;
+      font-size:12px; font-weight:bold;
+      min-width:130px; text-align:center;
+    }
+    .phase-launch  { background:rgba(255,77,28,0.15);  border:1px solid var(--accent); color:var(--accent); }
+    .phase-coast   { background:rgba(77,159,255,0.15); border:1px solid var(--blue);   color:var(--blue); }
+    .phase-descent { background:rgba(63,185,80,0.15);  border:1px solid var(--green);  color:var(--green); }
+    .phase-landed  { background:rgba(192,128,255,0.15);border:1px solid var(--purple); color:var(--purple); }
+    .phase-ready   { background:rgba(110,110,138,0.15);border:1px solid var(--muted);  color:var(--muted); }
+
+    /* ── Event tags ── */
+    .event-log {
+      position:absolute; top:36px; right:12px;
+      display:flex; flex-direction:column; gap:6px;
+      z-index:5; pointer-events:none;
+    }
+    .etag { padding:4px 10px; border-radius:4px; font-size:11px; opacity:0; transition:opacity 0.5s; text-align:right; }
+    .etag.show { opacity:1; }
+    .etag-burnout { background:rgba(255,77,28,0.2);  border:1px solid var(--accent); color:var(--accent); }
+    .etag-apogee  { background:rgba(77,159,255,0.2); border:1px solid var(--blue);   color:var(--blue); }
+    .etag-landed  { background:rgba(63,185,80,0.2);  border:1px solid var(--green);  color:var(--green); }
+
+    /* ── Countdown ── */
+    .countdown-overlay {
+      position:fixed; inset:0;
+      background:rgba(0,0,0,0.94); z-index:500;
+      display:flex; flex-direction:column;
+      align-items:center; justify-content:center; gap:18px;
+      backdrop-filter:blur(8px);
+      transition:opacity 0.5s;
+    }
+    .countdown-overlay.hidden { opacity:0; pointer-events:none; }
+    .countdown-motor  { font-size:13px; color:var(--muted); letter-spacing:1px; text-align:center; }
+    .countdown-number {
+      font-size:120px; font-weight:bold; color:var(--accent);
+      line-height:1; text-shadow:0 0 60px rgba(255,77,28,0.6);
+      transition:transform 0.12s;
+    }
+    .countdown-label  { font-size:15px; color:var(--muted); letter-spacing:6px; text-transform:uppercase; }
+    .countdown-bar    { width:280px; height:3px; background:#1a1a2a; border-radius:2px; overflow:hidden; }
+    .countdown-fill   { height:100%; background:var(--accent); border-radius:2px; transition:width 0.85s linear; }
+    .countdown-sub    { font-size:12px; color:#3a3a52; }
+
+    /* ── Summary ── */
+    .summary-overlay {
+      display:none; position:fixed; inset:0;
+      background:rgba(0,0,0,0.88); z-index:600;
+      align-items:center; justify-content:center;
+      backdrop-filter:blur(5px);
+    }
+    .summary-overlay.show { display:flex; }
+    .summary-box {
+      background:#0d0d18; border:1px solid #2a2a3a;
+      border-radius:14px; padding:36px;
+      text-align:center; max-width:420px; width:90%;
+    }
+    .summary-box h2 { font-size:24px; color:var(--green); margin-bottom:6px; }
+    .summary-box p  { color:var(--muted); margin-bottom:20px; font-size:13px; }
+    .summary-stats  { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:22px; }
+    .sstat { background:var(--bg); border:1px solid #2a2a3a; border-radius:8px; padding:13px; }
+    .sstat-val { font-size:20px; font-weight:bold; color:var(--accent); }
+    .sstat-lbl { font-size:10px; color:var(--muted); text-transform:uppercase; }
+    .summary-btns { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <div class="nav-logo">🚀 RocketSim — Launch Visualiser</div>
+    <a href="simulator.html" class="nav-back">← Back to Simulator</a>
+  </nav>
+
+  <div class="data-bar">
+    <div class="data-item">        <div class="data-value" id="live-alt">0.0</div>   <div class="data-label">Altitude (m)</div></div>
+    <div class="data-item blue">   <div class="data-value" id="live-vel">0.0</div>   <div class="data-label">Velocity (m/s)</div></div>
+    <div class="data-item yellow"> <div class="data-value" id="live-thrust">0.0</div><div class="data-label">Thrust (N)</div></div>
+    <div class="data-item purple"> <div class="data-value" id="live-time">0.00</div> <div class="data-label">Time (s)</div></div>
+    <div class="data-item green">  <div class="data-value" id="live-maxalt">—</div>  <div class="data-label">Max Alt (m)</div></div>
+    <div class="data-item">        <div class="data-value" id="live-accel">0.0</div> <div class="data-label">Accel (m/s²)</div></div>
+  </div>
+
+  <div class="viz-area">
+    <div class="viz-panel" id="panel-side">
+      <div class="panel-label">Side View</div>
+      <canvas id="canvas-side"></canvas>
+      <div class="event-log">
+        <div class="etag etag-burnout" id="tag-burnout">🔥 Motor Burnout</div>
+        <div class="etag etag-apogee"  id="tag-apogee">⬆️ Apogee</div>
+        <div class="etag etag-landed"  id="tag-landed">✅ Landed</div>
+      </div>
+    </div>
+    <div class="viz-panel" id="panel-traj">
+      <div class="panel-label">Trajectory View</div>
+      <canvas id="canvas-traj"></canvas>
+    </div>
+  </div>
+
+  <div class="controls-bar">
+    <button class="ctrl-btn primary" id="btn-play" onclick="togglePlay()">▶ Play</button>
+    <button class="ctrl-btn" onclick="restartAnim()">↺ Restart</button>
+    <div class="phase-badge phase-ready" id="phase-badge">Ready</div>
+    <label style="color:var(--muted);font-size:12px;display:flex;align-items:center;gap:6px;">
+      Speed
+      <select class="speed-select" onchange="speed=parseFloat(this.value)">
+        <option value="0.25">0.25×</option>
+        <option value="0.5">0.5×</option>
+        <option value="1" selected>1×</option>
+        <option value="2">2×</option>
+        <option value="5">5×</option>
+        <option value="10">10×</option>
+      </select>
+    </label>
+    <button class="ctrl-btn" onclick="showSummary()">📊 Summary</button>
+    <a href="simulator.html" class="ctrl-btn">← Simulator</a>
+  </div>
+
+  <!-- Countdown -->
+  <div class="countdown-overlay" id="countdownOverlay">
+    <div class="countdown-motor"  id="countdown-motor">Loading...</div>
+    <div class="countdown-number" id="countdown-num">5</div>
+    <div class="countdown-label"  id="countdown-label">T-MINUS</div>
+    <div class="countdown-bar"><div class="countdown-fill" id="countdown-fill" style="width:100%"></div></div>
+    <div class="countdown-sub">Stand clear of launch area</div>
+  </div>
+
+  <!-- Summary -->
+  <div class="summary-overlay" id="summaryOverlay">
+    <div class="summary-box">
+      <h2>🚀 Flight Complete</h2>
+      <p>Simulation results for your rocket</p>
+      <div class="summary-stats">
+        <div class="sstat"><div class="sstat-val" id="sum-alt">—</div><div class="sstat-lbl">Max Altitude (m)</div></div>
+        <div class="sstat"><div class="sstat-val" id="sum-vel">—</div><div class="sstat-lbl">Max Velocity (m/s)</div></div>
+        <div class="sstat"><div class="sstat-val" id="sum-time">—</div><div class="sstat-lbl">Total Flight (s)</div></div>
+        <div class="sstat"><div class="sstat-val" id="sum-motor">—</div><div class="sstat-lbl">Motor Class</div></div>
+      </div>
+      <div class="summary-btns">
+        <button class="ctrl-btn" onclick="document.getElementById('summaryOverlay').classList.remove('show')">Close</button>
+        <button class="ctrl-btn primary" onclick="restartAnim();document.getElementById('summaryOverlay').classList.remove('show')">↺ Replay</button>
+        <a href="simulator.html" class="ctrl-btn">← Simulator</a>
+      </div>
+    </div>
+  </div>
+
+<script>
+// ══════════════════════════════════════
+// FLIGHT PARAMS FROM URL
+// ══════════════════════════════════════
+const P          = new URLSearchParams(window.location.search);
+const MAX_ALT    = parseFloat(P.get('maxAlt'))    || 120;
+const TOTAL_TIME = parseFloat(P.get('totalTime')) || 8;
+const APOGEE_T   = parseFloat(P.get('apogeeTime'))|| 4;
+const MAX_VEL    = parseFloat(P.get('maxVel'))    || 50;
+const THRUST     = parseFloat(P.get('thrust'))    || 20;
+const BURN_TIME  = parseFloat(P.get('burnTime'))  || 1.5;
+const MOTOR      = P.get('motorClass')            || 'B';
+const ANGLE_DEG  = parseFloat(P.get('angle'))     || 90;
+const RANGE      = parseFloat(P.get('range'))     || 0;
+const ANGLE_RAD  = ANGLE_DEG * Math.PI / 180;
+const MASS_KG    = parseFloat(P.get('massKg'))    || 0.15;
+const CD         = parseFloat(P.get('cd'))        || 0.75;
+const DIAM_MM    = parseFloat(P.get('diamMm'))    || 29;
+
+// Populate summary
+document.getElementById('sum-alt').textContent     = MAX_ALT.toFixed(1);
+document.getElementById('sum-vel').textContent     = MAX_VEL.toFixed(1);
+document.getElementById('sum-time').textContent    = TOTAL_TIME.toFixed(1);
+document.getElementById('sum-motor').textContent   = MOTOR;
+document.getElementById('live-maxalt').textContent = MAX_ALT.toFixed(1);
+document.getElementById('countdown-motor').textContent =
+  `Motor: ${MOTOR} · Thrust: ${THRUST.toFixed(1)} N · Burn: ${BURN_TIME.toFixed(1)} s`;
+
+// ══════════════════════════════════════
+// BUILD EXACT FLIGHT TRAJECTORY
+// ══════════════════════════════════════
+function buildFlight() {
+  const dt   = 0.02;
+  const g    = 9.81;
+  const rho  = 1.225;
+  const area = Math.PI * Math.pow((DIAM_MM / 1000) / 2, 2);
+  let vx = 0, vy = 0, x = 0, y = 0, t = 0;
+  const pts = [];
+
+  while (true) {
+    const thrustNow = t <= BURN_TIME ? THRUST : 0;
+    const spd       = Math.sqrt(vx*vx + vy*vy);
+    const drag      = 0.5 * rho * CD * area * spd * spd;
+    const fx        = thrustNow * Math.cos(ANGLE_RAD) - (spd > 0 ? drag * (vx/spd) : 0);
+    const fy        = thrustNow * Math.sin(ANGLE_RAD) - MASS_KG * g - (spd > 0 ? drag * (vy/spd) : 0);
+    const ax = fx / MASS_KG;
+    const ay = fy / MASS_KG;
+    vx += ax * dt; vy += ay * dt;
+    x  += vx * dt; y  += vy * dt; t  += dt;
+
+    pts.push({
+      t:      parseFloat(t.toFixed(3)),
+      x,
+      y:      Math.max(y, 0),
+      vel:    Math.sqrt(vx*vx + vy*vy),
+      thrust: thrustNow,
+      accel:  Math.sqrt(ax*ax + ay*ay)
+    });
+
+    if (y < 0 && t > BURN_TIME + 0.5) { pts[pts.length-1].y = 0; break; }
+    if (t > 600) break;
+  }
+
+  const rawMaxAlt = Math.max(...pts.map(p => p.y)) || 1;
+  const rawMaxX   = Math.max(...pts.map(p => Math.abs(p.x))) || 1;
+  const rawTime   = pts[pts.length-1].t || 1;
+  const altScale  = MAX_ALT    / rawMaxAlt;
+  const xScale    = (Math.abs(RANGE) > 0.5 ? Math.abs(RANGE) : rawMaxX * altScale) / rawMaxX;
+  const tScale    = TOTAL_TIME / rawTime;
+
+  return pts.map(p => ({
+    t:      p.t      * tScale,
+    x:      p.x      * xScale,
+    y:      p.y      * altScale,
+    vel:    p.vel,
+    thrust: p.thrust,
+    accel:  p.accel
+  }));
+}
+
+const FLIGHT = buildFlight();
+const N      = FLIGHT.length;
+
+// ══════════════════════════════════════
+// CANVAS REFERENCES
+// ══════════════════════════════════════
+const sideC = document.getElementById('canvas-side');
+const trajC = document.getElementById('canvas-traj');
+const sideX = sideC.getContext('2d');
+const trajX = trajC.getContext('2d');
+
+function resizeCanvases() {
+  const ps = document.getElementById('panel-side');
+  const pt = document.getElementById('panel-traj');
+  sideC.width  = ps.clientWidth  || 100;
+  sideC.height = ps.clientHeight || 100;
+  trajC.width  = pt.clientWidth  || 100;
+  trajC.height = pt.clientHeight || 100;
+  sideC.style.width  = sideC.width  + 'px';
+  sideC.style.height = sideC.height + 'px';
+  trajC.style.width  = trajC.width  + 'px';
+  trajC.style.height = trajC.height + 'px';
+}
+
+// ══════════════════════════════════════
+// STATE
+// ══════════════════════════════════════
+let currentIdx = 0;
+let playing    = false;
+let speed      = 1;
+let rafId      = null;
+let lastTs     = null;
+let timeAcc    = 0;
+let cdActive   = false;
+
+// ══════════════════════════════════════
+// COUNTDOWN
+// ══════════════════════════════════════
+function startCountdown() {
+  cdActive = true;
+  const ov     = document.getElementById('countdownOverlay');
+  const numEl  = document.getElementById('countdown-num');
+  const lblEl  = document.getElementById('countdown-label');
+  const fillEl = document.getElementById('countdown-fill');
+
+  ov.classList.remove('hidden');
+
+  const steps = [
+    { num:'5', lbl:'T-MINUS', fill:'100%' },
+    { num:'4', lbl:'T-MINUS', fill:'80%'  },
+    { num:'3', lbl:'T-MINUS', fill:'60%'  },
+    { num:'2', lbl:'T-MINUS', fill:'40%'  },
+    { num:'1', lbl:'T-MINUS', fill:'20%'  },
+    { num:'🔥', lbl:'IGNITION', fill:'0%' },
+  ];
+
+  let i = 0;
+  function tick() {
+    if (i >= steps.length) {
+      ov.classList.add('hidden');
+      cdActive = false;
+      setTimeout(() => {
+        resizeCanvases();
+        beginFlight();
+      }, 500);
+      return;
+    }
+    const s       = steps[i];
+    numEl.textContent  = s.num;
+    lblEl.textContent  = s.lbl;
+    fillEl.style.width = s.fill;
+    numEl.style.transform = 'scale(1.2)';
+    setTimeout(() => { numEl.style.transform = 'scale(1)'; }, 150);
+    i++;
+    setTimeout(tick, i === steps.length ? 600 : 900);
+  }
+  tick();
+}
+
+function beginFlight() {
+  playing    = true;
+  currentIdx = 0;
+  timeAcc    = 0;
+  lastTs     = null;
+  document.getElementById('btn-play').textContent = '⏸ Pause';
+  rafId = requestAnimationFrame(animLoop);
+}
+
+// ══════════════════════════════════════
+// ANIMATION LOOP
+// ══════════════════════════════════════
+function animLoop(ts) {
+  if (!playing) return;
+  if (lastTs === null) lastTs = ts;
+
+  const wallDt = (ts - lastTs) / 1000;
+  lastTs       = ts;
+  timeAcc     += wallDt * speed;
+
+  while (currentIdx < N - 1 && FLIGHT[currentIdx].t < timeAcc) {
+    currentIdx++;
+  }
+
+  renderFrame(currentIdx);
+  updateHUD(currentIdx);
+
+  if (currentIdx >= N - 1) {
+    playing = false;
+    document.getElementById('btn-play').textContent = '▶ Replay';
+    setPhaseBadge('landed');
+    showTag('tag-landed');
+    setTimeout(showSummary, 1400);
+    return;
+  }
+
+  rafId = requestAnimationFrame(animLoop);
+}
+
+// ══════════════════════════════════════
+// HUD
+// ══════════════════════════════════════
+function updateHUD(idx) {
+  const p = FLIGHT[idx];
+  document.getElementById('live-alt').textContent    = p.y.toFixed(1);
+  document.getElementById('live-vel').textContent    = p.vel.toFixed(1);
+  document.getElementById('live-thrust').textContent = p.thrust.toFixed(1);
+  document.getElementById('live-time').textContent   = p.t.toFixed(2);
+  document.getElementById('live-accel').textContent  = p.accel.toFixed(1);
+
+  if      (p.thrust > 0)        setPhaseBadge('launch');
+  else if (p.t < APOGEE_T)      setPhaseBadge('coast');
+  else if (p.y > 0.5)           setPhaseBadge('descent');
+
+  const prevT = idx > 0 ? FLIGHT[idx-1].t : 0;
+  if (prevT < BURN_TIME && p.t >= BURN_TIME) showTag('tag-burnout');
+  if (prevT < APOGEE_T  && p.t >= APOGEE_T) showTag('tag-apogee');
+}
+
+function setPhaseBadge(phase) {
+  const el  = document.getElementById('phase-badge');
+  const map = {
+    launch:  ['phase-launch',  '🔥 Motor Burning'],
+    coast:   ['phase-coast',   '🚀 Coasting Up'],
+    descent: ['phase-descent', '⬇️ Descending'],
+    landed:  ['phase-landed',  '✅ Landed'],
+    ready:   ['phase-ready',   'Ready']
+  };
+  el.className   = 'phase-badge ' + map[phase][0];
+  el.textContent = map[phase][1];
+}
+
+function showTag(id) {
+  document.getElementById(id).classList.add('show');
+}
+
+// ══════════════════════════════════════
+// RENDER
+// ══════════════════════════════════════
+function renderFrame(idx) {
+  const i = Math.min(idx, N - 1);
+  drawSide(i);
+  drawTraj(i);
+}
+
+// ══════════════════════════════════════
+// SIDE VIEW
+// ══════════════════════════════════════
+function drawSide(idx) {
+  const W = sideC.width, H = sideC.height;
+  if (W < 10 || H < 10) return;
+
+  const ctx     = sideX;
+  const p       = FLIGHT[idx];
+  const PAD_B   = 70, PAD_T = 36;
+  const drawH   = H - PAD_B - PAD_T;
+  const groundY = H - PAD_B;
+  const cx      = W / 2;
+  const altFrac = p.y / MAX_ALT;
+  const rocketY = groundY - (p.y / MAX_ALT) * drawH;
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Sky
+  const skyR = Math.max(5,  Math.round(10  - altFrac * 8));
+  const skyG = Math.max(8,  Math.round(18  - altFrac * 14));
+  const skyB = Math.max(20, Math.round(50  + altFrac * 40));
+  const sky  = ctx.createLinearGradient(0, 0, 0, groundY);
+  sky.addColorStop(0,   `rgb(${skyR},${skyG},${skyB})`);
+  sky.addColorStop(0.7, `rgb(${skyR+4},${skyG+4},${Math.max(15,skyB-20)})`);
+  sky.addColorStop(1,   '#06061a');
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, W, groundY);
+
+  // Stars
+  if (altFrac > 0.2) {
+    const op = Math.min((altFrac - 0.2) * 3, 0.9);
+    ctx.fillStyle = `rgba(255,255,255,${op})`;
+    for (let i = 0; i < 70; i++) {
+      ctx.beginPath();
+      ctx.arc((i*173.7+20) % W, (i*113.1+10) % (groundY*0.85), i%4===0?1.1:0.6, 0, Math.PI*2);
+      ctx.fill();
+    }
+  }
+
+  // Clouds
+  if (altFrac < 0.3) {
+    const co = Math.max(0, (0.3 - altFrac) / 0.3) * 0.15;
+    ctx.fillStyle = `rgba(180,200,225,${co})`;
+    [[cx-90,groundY*0.28,80,22],[cx+55,groundY*0.42,95,20],[cx-20,groundY*0.58,65,16]]
+      .forEach(([ex,ey,ew,eh]) => {
+        ctx.beginPath(); ctx.ellipse(ex,ey,ew,eh,0,0,Math.PI*2); ctx.fill();
+      });
+  }
+
+  // Ground
+  const gg = ctx.createLinearGradient(0, groundY, 0, H);
+  gg.addColorStop(0, '#182515'); gg.addColorStop(1, '#0a100a');
+  ctx.fillStyle = gg; ctx.fillRect(0, groundY, W, H - groundY);
+  ctx.strokeStyle = '#253a20'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(0, groundY); ctx.lineTo(W, groundY); ctx.stroke();
+
+  // Altitude ruler
+  ctx.textAlign = 'right'; ctx.font = '10px Arial';
+  for (let i = 0; i <= 5; i++) {
+    const a  = (MAX_ALT / 5) * i;
+    const ry = groundY - (a / MAX_ALT) * drawH;
+    ctx.strokeStyle = 'rgba(110,110,138,0.15)'; ctx.lineWidth = 0.5;
+    ctx.beginPath(); ctx.moveTo(32, ry); ctx.lineTo(W - 4, ry); ctx.stroke();
+    ctx.fillStyle = 'rgba(110,110,138,0.6)';
+    ctx.fillText(a.toFixed(0) + 'm', 30, ry + 3);
+  }
+
+  // Launch pad
+  ctx.fillStyle = '#1e1e1e'; ctx.fillRect(cx-24, groundY, 48, 7);
+  ctx.fillStyle = '#2a2a2a'; ctx.fillRect(cx-3, groundY-16, 6, 16);
+  ctx.strokeStyle = '#2a2a2a'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(cx-24,groundY+7); ctx.lineTo(cx-14,groundY); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx+24,groundY+7); ctx.lineTo(cx+14,groundY); ctx.stroke();
+
+  // Smoke trail during burn
+  if (p.thrust > 0 && idx > 0) {
+    const tLen = Math.min(idx, 30);
+    for (let i = Math.max(0, idx - tLen); i < idx; i++) {
+      const tp    = FLIGHT[i];
+      const ty    = groundY - (tp.y / MAX_ALT) * drawH;
+      const age   = (idx - i) / tLen;
+      const r     = 2 + age * 12;
+      const drift = (i % 7 - 3) * age * 1.8;
+      ctx.beginPath(); ctx.arc(cx + drift, ty + 20, r, 0, Math.PI*2);
+      ctx.fillStyle = `rgba(160,145,130,${(1 - age) * 0.22})`; ctx.fill();
+    }
+  }
+
+  // Vapour trail after burnout
+  if (p.thrust === 0 && p.y > 1 && idx > 0) {
+    const tLen = Math.min(idx, 60);
+    ctx.strokeStyle = 'rgba(140,165,200,0.1)'; ctx.lineWidth = 1.2;
+    ctx.setLineDash([3, 7]);
+    ctx.beginPath();
+    for (let i = Math.max(0, idx - tLen); i <= idx; i++) {
+      const tp = FLIGHT[i], ty = groundY - (tp.y / MAX_ALT) * drawH;
+      i === Math.max(0, idx - tLen) ? ctx.moveTo(cx, ty) : ctx.lineTo(cx, ty);
+    }
+    ctx.stroke(); ctx.setLineDash([]);
+  }
+
+  // Flame — size exactly matches thrust
+  if (p.thrust > 0) {
+    const tf = p.thrust / THRUST;
+    const fH = 16 + tf * 30;
+    const fW = 4  + tf * 5;
+
+    // Outer flame
+    const og = ctx.createRadialGradient(cx, rocketY+18, 0, cx, rocketY+18, fH);
+    og.addColorStop(0,    'rgba(255,195,40,0.95)');
+    og.addColorStop(0.35, 'rgba(255,105,15,0.75)');
+    og.addColorStop(1,    'rgba(255,40,0,0)');
+    ctx.fillStyle = og;
+    ctx.beginPath(); ctx.ellipse(cx, rocketY+12+fH*0.45, fW, fH, 0, 0, Math.PI*2); ctx.fill();
+
+    // Inner core
+    const cg = ctx.createRadialGradient(cx, rocketY+14, 0, cx, rocketY+14, fH*0.45);
+    cg.addColorStop(0,   'rgba(255,255,210,1)');
+    cg.addColorStop(0.5, 'rgba(255,210,70,0.65)');
+    cg.addColorStop(1,   'rgba(255,90,0,0)');
+    ctx.fillStyle = cg;
+    ctx.beginPath(); ctx.ellipse(cx, rocketY+12+fH*0.28, fW*0.45, fH*0.42, 0, 0, Math.PI*2); ctx.fill();
+
+    // Ground glow near pad
+    if (p.y < MAX_ALT * 0.12) {
+      const gr  = 40 + tf * 40;
+      const ggr = ctx.createRadialGradient(cx, groundY, 0, cx, groundY, gr);
+      ggr.addColorStop(0, `rgba(255,110,20,${0.25*tf})`);
+      ggr.addColorStop(1, 'rgba(255,70,0,0)');
+      ctx.fillStyle = ggr;
+      ctx.beginPath(); ctx.arc(cx, groundY, gr, 0, Math.PI*2); ctx.fill();
+    }
+  }
+
+  // Rocket
+  drawRocketShape(ctx, cx, rocketY);
+
+  // Altitude dashed line
+  ctx.strokeStyle = 'rgba(255,77,28,0.18)'; ctx.lineWidth = 0.7;
+  ctx.setLineDash([3, 6]);
+  ctx.beginPath(); ctx.moveTo(32, rocketY); ctx.lineTo(cx - 9, rocketY); ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+function drawRocketShape(ctx, cx, cy) {
+  const rW = 7, rH = 22;
+
+  // Body gradient
+  const bg = ctx.createLinearGradient(cx-rW, 0, cx+rW, 0);
+  bg.addColorStop(0,   '#b03008');
+  bg.addColorStop(0.4, '#ff4d1c');
+  bg.addColorStop(1,   '#7a1c06');
+  ctx.fillStyle = bg; ctx.fillRect(cx-rW, cy, rW*2, rH);
+
+  // Nose
+  ctx.fillStyle = '#ff4d1c';
+  ctx.beginPath();
+  ctx.moveTo(cx, cy-13);
+  ctx.quadraticCurveTo(cx+rW*1.1, cy-2, cx+rW, cy);
+  ctx.lineTo(cx-rW, cy);
+  ctx.quadraticCurveTo(cx-rW*1.1, cy-2, cx, cy-13);
+  ctx.closePath(); ctx.fill();
+
+  // Window
+  ctx.fillStyle   = 'rgba(100,185,255,0.35)';
+  ctx.strokeStyle = 'rgba(100,185,255,0.65)'; ctx.lineWidth = 0.8;
+  ctx.beginPath(); ctx.arc(cx, cy+6, 3, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+
+  // Fins
+  ctx.fillStyle = '#b03008';
+  ctx.beginPath(); ctx.moveTo(cx-rW,cy+rH-9); ctx.lineTo(cx-rW-8,cy+rH+4); ctx.lineTo(cx-rW,cy+rH); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(cx+rW,cy+rH-9); ctx.lineTo(cx+rW+8,cy+rH+4); ctx.lineTo(cx+rW,cy+rH); ctx.closePath(); ctx.fill();
+
+  // Nozzle
+  ctx.fillStyle = '#1a1a1a'; ctx.fillRect(cx-rW*0.5, cy+rH, rW, 4);
+}
+
+// ══════════════════════════════════════
+// TRAJECTORY VIEW
+// ══════════════════════════════════════
+function drawTraj(idx) {
+  const W = trajC.width, H = trajC.height;
+  if (W < 10 || H < 10) return;
+
+  const ctx = trajX;
+  ctx.clearRect(0, 0, W, H);
+
+  // Background
+  ctx.fillStyle = '#06060e'; ctx.fillRect(0, 0, W, H);
+
+  const PAD  = { top:40, right:36, bottom:52, left:58 };
+  const dW   = W - PAD.left - PAD.right;
+  const dH   = H - PAD.top  - PAD.bottom;
+  const maxY = MAX_ALT;
+  const maxX = Math.max(...FLIGHT.map(p => Math.abs(p.x))) || 1;
+  const isVert = ANGLE_DEG >= 75;
+
+  const toX = isVert
+    ? x => PAD.left + dW/2 + (x / maxX) * (dW * 0.2)
+    : x => PAD.left + ((x + maxX) / (maxX * 2)) * dW;
+  const toY = y => PAD.top + dH - (y / maxY) * dH;
+
+  // Grid
+  ctx.strokeStyle = 'rgba(42,42,58,0.5)'; ctx.lineWidth = 0.5;
+  for (let i = 0; i <= 5; i++) {
+    const gy = PAD.top + i * dH / 5;
+    ctx.beginPath(); ctx.moveTo(PAD.left, gy); ctx.lineTo(W-PAD.right, gy); ctx.stroke();
+    const gx = PAD.left + i * dW / 5;
+    ctx.beginPath(); ctx.moveTo(gx, PAD.top); ctx.lineTo(gx, H-PAD.bottom); ctx.stroke();
+  }
+
+  // Axes
+  ctx.strokeStyle = '#2a2a3a'; ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(PAD.left, PAD.top);
+  ctx.lineTo(PAD.left, H-PAD.bottom);
+  ctx.lineTo(W-PAD.right, H-PAD.bottom);
+  ctx.stroke();
+
+  // Y labels
+  ctx.fillStyle = '#6e6e8a'; ctx.font = '10px Arial'; ctx.textAlign = 'right';
+  for (let i = 0; i <= 5; i++) {
+    const a  = (maxY / 5) * (5 - i);
+    const gy = PAD.top + i * dH / 5;
+    ctx.fillText(a.toFixed(0) + 'm', PAD.left - 5, gy + 3);
+  }
+
+  // Ghost full path
+  ctx.strokeStyle = 'rgba(255,77,28,0.1)'; ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  FLIGHT.forEach((p, i) => i === 0 ? ctx.moveTo(toX(p.x), toY(p.y)) : ctx.lineTo(toX(p.x), toY(p.y)));
+  ctx.stroke();
+
+  // Colour-coded completed path
+  for (let i = 1; i <= idx; i++) {
+    const prev = FLIGHT[i-1], curr = FLIGHT[i];
+    ctx.strokeStyle = curr.thrust > 0 ? '#ff4d1c' : curr.t < APOGEE_T ? '#4d9fff' : '#3fb950';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(toX(prev.x), toY(prev.y));
+    ctx.lineTo(toX(curr.x), toY(curr.y));
+    ctx.stroke();
+  }
+
+  // Apogee marker
+  const apIdx = FLIGHT.reduce((b, p, i) => p.y > FLIGHT[b].y ? i : b, 0);
+  if (apIdx <= idx) {
+    const ap = FLIGHT[apIdx];
+    ctx.fillStyle = 'rgba(77,159,255,0.2)'; ctx.strokeStyle = '#4d9fff'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(toX(ap.x), toY(ap.y), 5, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#4d9fff'; ctx.font = '10px Arial'; ctx.textAlign = 'center';
+    ctx.fillText('Apogee ' + ap.y.toFixed(0) + 'm', toX(ap.x), toY(ap.y) - 10);
+  }
+
+  // Burnout marker
+  const bIdx = FLIGHT.findIndex(p => p.t >= BURN_TIME);
+  if (bIdx > 0 && bIdx <= idx) {
+    const bp = FLIGHT[bIdx];
+    ctx.fillStyle = 'rgba(255,77,28,0.25)'; ctx.strokeStyle = '#ff4d1c'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(toX(bp.x), toY(bp.y), 4, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#ff7043'; ctx.font = '10px Arial'; ctx.textAlign = 'left';
+    ctx.fillText('Burnout', toX(bp.x) + 7, toY(bp.y) + 4);
+  }
+
+  // Launch marker
+  ctx.fillStyle = '#3fb950';
+  ctx.beginPath(); ctx.arc(toX(FLIGHT[0].x), toY(0), 5, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#3fb950'; ctx.font = '10px Arial'; ctx.textAlign = 'left';
+  ctx.fillText('Launch', toX(FLIGHT[0].x) + 7, toY(0) + 4);
+
+  // Moving dot with glow
+  const cur    = FLIGHT[idx];
+  const dotCol = cur.thrust > 0 ? '#ff4d1c' : cur.t < APOGEE_T ? '#4d9fff' : '#3fb950';
+  ctx.shadowColor = dotCol; ctx.shadowBlur = 14;
+  ctx.fillStyle   = dotCol;
+  ctx.beginPath(); ctx.arc(toX(cur.x), toY(cur.y), 5, 0, Math.PI*2); ctx.fill();
+  ctx.shadowBlur  = 0;
+  ctx.fillStyle   = 'white';
+  ctx.beginPath(); ctx.arc(toX(cur.x), toY(cur.y), 2, 0, Math.PI*2); ctx.fill();
+
+  // Info box
+  ctx.fillStyle = 'rgba(6,6,14,0.82)';
+  ctx.fillRect(PAD.left + 4, PAD.top + 4, 170, 46);
+  ctx.textAlign = 'left'; ctx.font = 'bold 11px Arial';
+  ctx.fillStyle = '#ff4d1c'; ctx.fillText(`T+${cur.t.toFixed(2)}s`, PAD.left+10, PAD.top+18);
+  ctx.fillStyle = '#4d9fff'; ctx.fillText(`Alt: ${cur.y.toFixed(1)} m`, PAD.left+10, PAD.top+34);
+  ctx.fillStyle = '#ffa040'; ctx.fillText(`Vel: ${cur.vel.toFixed(1)} m/s`, PAD.left+90, PAD.top+34);
+}
+
+// ══════════════════════════════════════
+// CONTROLS
+// ══════════════════════════════════════
+function togglePlay() {
+  if (cdActive) return;
+  if (currentIdx >= N - 1) { restartAnim(); return; }
+  if (!playing) {
+    if (currentIdx === 0) {
+      startCountdown();
+    } else {
+      playing = true; lastTs = null;
+      document.getElementById('btn-play').textContent = '⏸ Pause';
+      rafId = requestAnimationFrame(animLoop);
+    }
+  } else {
+    playing = false;
+    document.getElementById('btn-play').textContent = '▶ Play';
+    if (rafId) cancelAnimationFrame(rafId);
+  }
+}
+
+function restartAnim() {
+  playing = false; currentIdx = 0; timeAcc = 0; lastTs = null;
+  if (rafId) cancelAnimationFrame(rafId);
+  document.getElementById('btn-play').textContent = '▶ Play';
+  setPhaseBadge('ready');
+  document.querySelectorAll('.etag').forEach(e => e.classList.remove('show'));
+  resizeCanvases();
+  renderFrame(0);
+}
+
+function showSummary() {
+  document.getElementById('summaryOverlay').classList.add('show');
+}
+
+// ══════════════════════════════════════
+// INIT — wait for full layout
+// ══════════════════════════════════════
+window.addEventListener('resize', () => {
+  resizeCanvases();
+  renderFrame(currentIdx);
+});
+
+// Double rAF guarantees layout is complete before we read clientWidth/Height
+requestAnimationFrame(() => {
+  requestAnimationFrame(() => {
+    resizeCanvases();
+    renderFrame(0);
+  });
+});
+</script>
+</body>
+</html>

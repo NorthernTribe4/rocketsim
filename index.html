@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RocketSim — Model Rocket Flight Simulator</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="home-page">
+
+  <nav>
+    <div class="nav-logo">🚀 RocketSim</div>
+    <div class="nav-links">
+      <a href="index.html" class="active">Home</a>
+      <a href="builder.html">Rocket Builder</a>
+      <a href="simulator.html">Simulator</a>
+      <a href="feedback.html">Feedback</a>
+      <span id="nav-auth-area"></span>
+    </div>
+  </nav>
+
+<section class="hero">
+    <div class="hero-bg-image" id="hero-bg-image"></div>
+    <div class="stars" id="stars"></div>
+    <div class="hero-content">
+      <div class="hero-badge">Model Rocketry · Physics Simulation · Engineering</div>
+      <h1>Predict Your Rocket's<br><span class="accent">Flight Before Launch</span></h1>
+      <p class="hero-desc">
+        RocketSim is an engineering-grade flight simulator for model rockets.
+        Input your rocket's specifications, motor data, and real-time weather
+        conditions to accurately predict altitude, velocity, stability, and
+        flight trajectory — before your rocket ever leaves the pad.
+      </p>
+      <div class="hero-btns">
+        <a href="simulator.html" class="cta-btn">Launch Simulator →</a>
+        <a href="feedback.html" class="cta-btn-outline">Leave Feedback</a>
+      </div>
+    </div>
+    <div class="hero-rocket">
+      <div class="rocket-anim">
+        <div class="rocket-body">
+          <div class="rocket-nose"></div>
+          <div class="rocket-window"></div>
+          <div class="rocket-fin left"></div>
+          <div class="rocket-fin right"></div>
+          <div class="rocket-exhaust">
+            <div class="flame f1"></div>
+            <div class="flame f2"></div>
+            <div class="flame f3"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="features">
+    <h2>What RocketSim Models</h2>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">📐</div>
+        <h3>Flight Physics</h3>
+        <p>Full thrust, drag, and gravitational simulation using real Newtonian mechanics and atmospheric density calculations.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🌤️</div>
+        <h3>Live Weather</h3>
+        <p>Auto-fetches real-time temperature, humidity, pressure, and wind at your location to refine simulation accuracy.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">⚖️</div>
+        <h3>Stability Analysis</h3>
+        <p>Estimates centre of pressure and centre of gravity from your fin and nose cone geometry to check flight stability.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🤖</div>
+        <h3>AI Flight Analyst</h3>
+        <p>After simulation, an AI assistant analyses your data and gives specific suggestions to improve altitude, stability, or motor choice.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">✏️</div>
+        <h3>Rocket Builder</h3>
+        <p>Design your rocket visually with real-time SVG preview and send dimensions directly to the simulator.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🎬</div>
+        <h3>Launch Visualiser</h3>
+        <p>Watch a full animated simulation of your rocket's flight — side view and trajectory arc, synced to your exact data.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="about">
+    <div class="about-content">
+      <div class="about-text">
+        <div class="about-badge">About the Creator</div>
+        <h2>Built by Aarush</h2>
+        <p>
+          RocketSim was designed and built by Aarush, a Year 11 student at Doha College,
+          Qatar, with a passion for aerospace engineering. This project combines applied
+          physics, computational simulation, and software development — exploring the same
+          fundamental principles that underpin real rocket engineering.
+        </p>
+        <p>
+          The simulator draws on Newtonian mechanics, atmospheric science, and aerodynamic
+          theory to produce accurate flight predictions for model rockets ranging from small
+          Estes motors to high-power H-class motors.
+        </p>
+        <div class="hero-btns">
+          <a href="simulator.html" class="cta-btn">Try the Simulator →</a>
+          <a href="feedback.html" class="cta-btn-outline">Give Feedback</a>
+        </div>
+      </div>
+      <div class="about-stats">
+        <div class="stat-card"><div class="stat-value">6+</div><div class="stat-label">Physics Parameters</div></div>
+        <div class="stat-card"><div class="stat-value">8</div><div class="stat-label">Motor Classes</div></div>
+        <div class="stat-card"><div class="stat-value">3</div><div class="stat-label">Live Graphs</div></div>
+        <div class="stat-card"><div class="stat-value">AI</div><div class="stat-label">Flight Analyst</div></div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="footer-content">
+      <div class="footer-logo">🚀 RocketSim</div>
+      <p>Built by Aarush · Doha College · Qatar</p>
+      <p class="footer-note">For educational and pre-flight planning purposes. Always follow local rocketry safety regulations.</p>
+    </div>
+  </footer>
+
+  <script type="module">
+    import { initAuthNav } from './auth.js';
+    initAuthNav();
+  </script>
+  <script>
+    const s = document.getElementById('stars');
+    for (let i = 0; i < 120; i++) {
+      const star = document.createElement('div');
+      star.className = 'star';
+      star.style.left   = Math.random() * 100 + '%';
+      star.style.top    = Math.random() * 100 + '%';
+      star.style.width  = star.style.height = (Math.random() * 2.5 + 0.5) + 'px';
+      star.style.animationDelay = (Math.random() * 3) + 's';
+      s.appendChild(star);
+    }
+  </script>
+</body>
+</html>
